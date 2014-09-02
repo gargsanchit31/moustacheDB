@@ -272,7 +272,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 
 				case 0:
 				IFDEBUG printf("case 0:\n"); ENDBUG
-					valid_buffer = false;
+					valid_buffer = true;
 					int k;
 
 					for(k=0;k<numprojattrs;++k){
