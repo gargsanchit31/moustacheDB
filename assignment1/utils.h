@@ -5,7 +5,7 @@
 #ifndef UTILS_H__
 #define UTILS_H_
 
-#define DEBUG 0
+#define DEBUG 1
 #define IFDEBUG if(DEBUG){ 
 #define ENDBUG	}
 

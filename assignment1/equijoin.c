@@ -43,7 +43,7 @@ static int joincompare(void* rec1, void* rec2, int r1row, int r2row, int numjoin
 		{
 			case 1:								//Integer comparision
 				IFDEBUG
-					printf("case: %d, %d, %d\n",type1, (*(int*)(a+offset1)), (*(int*)(b+offset2)));
+					printf("JoinCompare type: %d, %d, %d\n",type1, (*(int*)(a+offset1)), (*(int*)(b+offset2)));
 				ENDBUG
 				tempi = (*(int*)(a+offset1))-(*(int*)(b+offset2));
 				if(tempi>0)
@@ -56,7 +56,7 @@ static int joincompare(void* rec1, void* rec2, int r1row, int r2row, int numjoin
 				
 			case 2:								//Double comparision
 				IFDEBUG
-					printf("case: %d, %f, %f\n",type1, (*(double*)(a+offset1)), (*(double*)(b+offset2)));
+					printf("JoinCompare type: %d, %f, %f\n",type1, (*(double*)(a+offset1)), (*(double*)(b+offset2)));
 				ENDBUG
 				tempd = (*(double*)(a+offset1))-(*(double*)(b+offset2));
 				if(tempd>0.0)
@@ -69,7 +69,7 @@ static int joincompare(void* rec1, void* rec2, int r1row, int r2row, int numjoin
 				
 			case 3:								//String comparision
 				IFDEBUG
-					printf("case: %d, %s, %s\n",type1, (char*)(a+offset1), (char*)(b+offset2));
+					printf("JoinCompare type: %d, %s, %s\n",type1, (char*)(a+offset1), (char*)(b+offset2));
 				ENDBUG
 				if(string((char*)(a+offset1))<string((char*)(b+offset2)))
 					return -1;
@@ -230,7 +230,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	bool valid_buffer = false;
 
 	int loop_count=0;
-
+	int same_count=0;
 
 	do{
 		loop_count++;
@@ -244,47 +244,68 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 			switch(comparestatus){
 				case 1:
 					IFDEBUG printf("case 1:\n"); ENDBUG
+					assert(same_count == 0);
 					recread2++;j++;
 					break;
 
 				case -1:
 				IFDEBUG printf("case -1:\n"); ENDBUG
-					recread1++;i++;
+					if (same_count!=0)
+					{
+						IFDEBUG 
+						printf("Same Count is: %d\n", same_count);
+						ENDBUG
+						comparestatus = joincompare(buffer1, buffer2, i+1, j-1,numjoinattrs,attrlist1,attrlist2);
+						if (comparestatus == 0) {
+							// next element of 1st buffer also matches
+							j = j - same_count;
+							recread2 = recread2 - same_count;
+							same_count = 0;
+						} else {
+							// not same.
+							same_count = 0;
+						}
+					}
+					recread1++;
+					i++;
 					break;
 
 				case 0:
 				IFDEBUG printf("case 0:\n"); ENDBUG
-					valid_buffer = true;
+					valid_buffer = false;
 					int k;
 
 					for(k=0;k<numprojattrs;++k){
-						int offset;
+						int size;
 						if(projlist[k][0] == 1){
-							offset = attributes1[projlist[k][1]][1];
+							size = attributes1[projlist[k][1]][1];
 							readoffset1=recsize1*recread1;
-							memcpy(outbuffer+writeoffset, buffer1 + readoffset1 + attributes1[projlist[k][1]][2], offset);
+							memcpy(outbuffer+writeoffset, buffer1 + readoffset1 + attributes1[projlist[k][1]][2], size);
 						}
 						else{
-							offset = attributes2[projlist[k][1]][1];
+							size = attributes2[projlist[k][1]][1];
 							readoffset2=recsize2*recread2;
-							memcpy(outbuffer+writeoffset, buffer2 + readoffset2 + attributes2[projlist[k][1]][2], offset);
+							memcpy(outbuffer+writeoffset, buffer2 + readoffset2 + attributes2[projlist[k][1]][2], size);
 						}
 
 						IFDEBUG
 							if(projlist[k][0] == 1){
 								printf("K: %d,Relation Number: %d,Attribute NUmber: %d, ",k,projlist[k][0],projlist[k][1]);
-								printf("readoffset1: %d, writeoffset:%d, attr size: %d\n",readoffset1,writeoffset,offset);
+								printf("readoffset1: %d, writeoffset:%d, attr size: %d\n",readoffset1,writeoffset,size);
 							}
 							else{
 								printf("K: %d,Relation Number: %d,Attribute NUmber: %d ",k,projlist[k][0],projlist[k][1]);
-								printf("readoffset2: %d, writeoffset:%d, attr size: %d\n",readoffset2,writeoffset,offset);
+								printf("readoffset2: %d, writeoffset:%d, attr size: %d\n",readoffset2,writeoffset,size);
 							}
 						ENDBUG
 
-						writeoffset += offset;
+						writeoffset += size;
 
 					}
-					recread1++;recread2++;recwrite++;i++;j++;
+					recread2++;
+					recwrite++;
+					j++;
+					same_count++;
 					break;
 
 				if(recwrite >= maxrecout){
@@ -304,7 +325,20 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recread2 = 0;
 				}
 			}
-		}	
+			if ((j == readstatus2) && (same_count!=0) && (i < readstatus1))
+			{
+				IFDEBUG 
+				printf("Same Count is: %d\n", same_count);
+				ENDBUG
+				
+				j = j - same_count;
+				recread2 = recread2 - same_count;
+				i++;
+				recread1++;
+				same_count = 0;
+			}	
+		}
+
 	}
 	while(!feof(tempfile1) && !feof(tempfile2));
 
