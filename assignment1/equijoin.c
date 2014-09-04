@@ -105,15 +105,54 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	display("tmp1");
 	display("tmp2");
 
+	bool status = true;
+	tempfile1 = open_file(rel1, "rb");
+	status = (tempfile1 == NULL);
+	tempfile2 = open_file(rel2, "rb");
+	status = status && (tempfile2 == NULL);
+	if(status){
+		printf("error opening files1\n");
+		return 1;
+	}
+
+	fread(&noattr1,sizeof(unsigned),1,tempfile1);	//no of attributes in rel1
+	fread(&noattr2,sizeof(unsigned),1,tempfile2);	//no of attributes in rel2
+	int temp = noattr1 + noattr2;
+	int projlist2[temp][2];
+	fclose(tempfile1);
+	fclose(tempfile2);
+
+	if (numprojattrs==0) {
+		numprojattrs = temp;
+		for(int i=0;i<noattr1;i++){
+		  projlist2[i][0] = 1;
+		  projlist2[i][1] = i+1;	
+	  	}
+	  	for(int i=0;i<noattr2;i++){
+		  projlist2[noattr1 + i][0] = 2;
+  		  projlist2[noattr1 + i][1] = i+1;	
+	  	}
+	  	projlist = projlist2;
+	  	IFDEBUG
+	  	for(int i=0; i < numprojattrs; i++)
+	  	{
+	  		printf("projlist %d: %d, %d\n", i, projlist[i][0], projlist[i][1]);
+	  	}
+	  	ENDBUG
+	}
+
+	for(int i=0; i < numprojattrs; i++)
+	  	{
+	  		printf("projlist %d: %d, %d\n", i, projlist[i][0], projlist[i][1]);
+	  	}
 	int bufsize = BUFF_SIZE/3;
 	IFDEBUG printf("Buffer size: %d\n",bufsize); ENDBUG
 
 	buffer1 = calloc(bufsize,sizeof(unsigned char));
 	buffer2 = calloc(bufsize,sizeof(unsigned char));
 	outbuffer = calloc(bufsize,sizeof(unsigned char));
-	
-	
-	bool status = true;
+
+	status = true;
 	tempfile1 = open_file(tmp1, "rb");
 	status = (tempfile1 == NULL);
 	tempfile2 = open_file(tmp2, "rb");
@@ -122,8 +161,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 		printf("error opening files1\n");
 		return 1;
 	}
-	
-	
+
 	fread(&noattr1,sizeof(unsigned),1,tempfile1);	//no of attributes
 	fread(&noattr2,sizeof(unsigned),1,tempfile2);	//no of attributes
 
