@@ -90,9 +90,6 @@ static int joincompare(void* rec1, void* rec2, int r1row, int r2row, int numjoin
 
 int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlist1[], int attrlist2[], int numprojattrs, int projlist[][2])
 {
-
-	printf("\n Implementing this function \n");
-
 	unsigned noattr1,noattr2;
 
 
@@ -101,9 +98,10 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	sort(rel1, "tmp1", numjoinattrs, attrlist1, BUFF_SIZE);
 	sort(rel2, "tmp2", numjoinattrs, attrlist2, BUFF_SIZE);	
 
-
-	display("tmp1");
-	display("tmp2");
+	IFDEBUG
+		display("tmp1");
+		display("tmp2");
+	ENDBUG
 
 	bool status = true;
 	tempfile1 = open_file(rel1, "rb");
@@ -133,6 +131,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
   		  projlist2[noattr1 + i][1] = i+1;	
 	  	}
 	  	projlist = projlist2;
+
 	  	IFDEBUG
 	  	for(int i=0; i < numprojattrs; i++)
 	  	{
@@ -141,10 +140,12 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	  	ENDBUG
 	}
 
+	IFDEBUG
 	for(int i=0; i < numprojattrs; i++)
-	  	{
-	  		printf("projlist %d: %d, %d\n", i, projlist[i][0], projlist[i][1]);
-	  	}
+  		printf("projlist %d: %d, %d\n", i, projlist[i][0], projlist[i][1]);
+
+	ENDBUG
+
 	int bufsize = BUFF_SIZE/3;
 	IFDEBUG printf("Buffer size: %d\n",bufsize); ENDBUG
 
@@ -195,28 +196,42 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 		attributes1[i][1] = temp;
 		attributes1[i][2] = recsize1;
 		recsize1 += temp;
+		IFDEBUG
+			printf("1: attr no: %d, type: %d, size: %d, offset: %d\n", i, attributes1[i][0], attributes1[i][1], attributes1[i][2]);
+		ENDBUG
 	}
 
 	recsize2 = 0;
 	for(int i=1;i<=(signed)noattr2;i++){
 		int temp;
-		fread(attributes2[i],sizeof(int),1,tempfile2);			//attributes[0][*] is not used.
+		fread(&attributes2[i][0],sizeof(int),1,tempfile2);			//attributes[0][*] is not used.
 		fread(&temp,sizeof(int),1,tempfile2);
 		attributes2[i][1] = temp;
 		attributes2[i][2] = recsize2;
 		recsize2 += temp;
+		IFDEBUG
+			printf("2: attr no: %d, type: %d, size: %d, offset: %d\n", i, attributes2[i][0], attributes2[i][1], attributes2[i][2]);
+		ENDBUG
 	}
 
 	recsizeout=0;
 	for(int i=0;i<(signed)numprojattrs;i++){
 		int temp, relnum=projlist[i][0];
 		
-		if(relnum==1)
+		if(relnum==1){
 			temp = attributes1[projlist[i][1]][1];
-		else
+			attributesout[i][0] = attributes1[projlist[i][1]][0];
+		}
+			
+		else{
 			temp = attributes2[projlist[i][1]][1];
+			attributesout[i][0] = attributes2[projlist[i][1]][0];
+		}
+			
+		IFDEBUG
+			printf("relnum: %d, attr no: %d, type: %d, size: %d\n", relnum, projlist[i][1], attributesout[i][0], temp);
+		ENDBUG
 
-		attributesout[i][0] = attributes1[projlist[i][1]][0];
 		attributesout[i][1] = temp;
 		attributesout[i][2] = recsizeout;
 		recsizeout += temp;
@@ -411,6 +426,8 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	fclose(tempfile1);
 	fclose(tempfile2);
 	fclose(out);
+
+	printf("\n========================\nSucess!! %s and %s are joined.\nResult is in %s\n========================\n",rel1, rel2, outrel);
 
 	system("rm tmp1 tmp2");
 	return 0;

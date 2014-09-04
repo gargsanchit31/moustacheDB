@@ -2,10 +2,10 @@
  * utils.h
  */
 
-#ifndef UTILS_H__
+#ifndef UTILS_H_
 #define UTILS_H_
 
-#define DEBUG 1
+#define DEBUG 0
 #define IFDEBUG if(DEBUG){ 
 #define ENDBUG	}
 
