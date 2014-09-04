@@ -112,17 +112,17 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	buffer2 = calloc(bufsize,sizeof(unsigned char));
 	outbuffer = calloc(bufsize,sizeof(unsigned char));
 	
-	{
-		bool status = true;
-		tempfile1 = open_file(tmp1, "rb");
-		status = (tempfile1 == NULL);
-		tempfile2 = open_file(tmp2, "rb");
-		status = status && (tempfile2 == NULL);
-		if(status){
-			printf("error opening files1\n");
-			return 1;
-		}
+	
+	bool status = true;
+	tempfile1 = open_file(tmp1, "rb");
+	status = (tempfile1 == NULL);
+	tempfile2 = open_file(tmp2, "rb");
+	status = status && (tempfile2 == NULL);
+	if(status){
+		printf("error opening files1\n");
+		return 1;
 	}
+	
 	
 	fread(&noattr1,sizeof(unsigned),1,tempfile1);	//no of attributes
 	fread(&noattr2,sizeof(unsigned),1,tempfile2);	//no of attributes
@@ -320,9 +320,23 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recread1 = 0;
 				}
 				if(recread2 >= maxrec2){
-					readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
-					IFDEBUG printf("status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
-					recread2 = 0;
+					if (same_count!=0)
+					{
+						// Houston, there is a problem
+						// we might have overflown buffer
+						// fseek first to the oldest same element
+						// and then read the buffer
+						fseek(tempfile2, -same_count*recsize2, SEEK_CUR);
+						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
+						IFDEBUG printf("Buffer overflown with same_count!=0; status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+						recread2 = same_count;
+						j = same_count;
+					} else {
+						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
+						IFDEBUG printf("status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+						recread2 = 0;	
+					}
+					
 				}
 			}
 			if ((j == readstatus2) && (same_count!=0) && (i < readstatus1))
