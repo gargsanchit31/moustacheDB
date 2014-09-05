@@ -32,10 +32,14 @@ static int joincompare(void* rec1, void* rec2, int r1row, int r2row, int numjoin
 	double tempd;
 	void* a = rec1 + r1row*recsize1;
 	void* b = rec2 + r2row*recsize2;
+	IFDEBUG printf("numjoinattrs is %d\n", numjoinattrs); ENDBUG
 	for(i=0;i<numjoinattrs;++i){
 		int attr1 = joinattrlist1[i], attr2 = joinattrlist2[i];
-		int type1 = attributes1[attr1][0], offset1 = attributes1[attr1][2];
-		int type2 = attributes2[attr2][0], offset2 = attributes2[attr2][2];
+		IFDEBUG printf("i %d attr1 %d attr2 %d\n", i, attr1, attr2 ); ENDBUG
+		int type2 = attributes2[attr2][0];
+		int offset2 = attributes2[attr2][2];
+		int type1 = attributes1[attr1][0];
+		int offset1 = attributes1[attr1][2];
 
 		assert(type2 == type1);
 
@@ -287,13 +291,15 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 
 	do{
 		loop_count++;
+		IFDEBUG printf("loop_count is: %d\n", loop_count); ENDBUG
 		if(readstatus1==0 && readstatus2==0)
 			break;
 
 		int i,j;
 		for(i=0,j=0;i<readstatus1 && j<readstatus2;){
+			IFDEBUG printf("forloop: i %d, j %d\n", i, j); ENDBUG
 			comparestatus = joincompare(buffer1,buffer2,i,j,numjoinattrs,attrlist1,attrlist2);
-
+			IFDEBUG printf("comparestatus : %d\n", comparestatus); ENDBUG
 			switch(comparestatus){
 				case 1:
 					IFDEBUG printf("case 1:\n"); ENDBUG
@@ -359,12 +365,13 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recwrite++;
 					j++;
 					same_count++;
-					break;
 
+				IFDEBUG printf("recread %d, recwrite %d, same_count %d \n",recread2, recwrite, same_count ); ENDBUG
 				if(recwrite >= maxrecout){
+					IFDEBUG printf("Writing out from writebuffer, recwrite: %d, i: %d, j %d\n", recwrite, i, j); ENDBUG
 					valid_buffer = false;
 					writestatus = fwrite(outbuffer, recsizeout, recwrite, out);
-					IFDEBUG printf("status3: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+					IFDEBUG printf("status3: %d, %d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
 					recwrite = 0;
 				}
 				if(recread1 >= maxrec1){
@@ -373,6 +380,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recread1 = 0;
 				}
 				if(recread2 >= maxrec2){
+					IFDEBUG printf("recread2 %d > maxrec2 %d\n", recread2, maxrec2); ENDBUG
 					if (same_count!=0)
 					{
 						// Houston, there is a problem
@@ -403,7 +411,8 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 				i++;
 				recread1++;
 				same_count = 0;
-			}	
+			}
+			IFDEBUG printf("At the end of for loop, i %d j %d readstatus1 %d readstatus2 %d\n", i, j, readstatus1, readstatus2); ENDBUG
 		}
 
 	}
