@@ -290,13 +290,15 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	int loop_count=0;
 	int same_count=0;
 
+	int i,j;
+
 	do{
 		loop_count++;
 		IFDEBUG printf("loop_count is: %d\nreadstatus1: %d, readstatus2: %d\n", loop_count, readstatus1, readstatus2); ENDBUG
 		if(readstatus1==0 || readstatus2==0)
 			break;
 
-		int i,j;
+		
 		for(i=0,j=0;i<readstatus1 && j<readstatus2;){
 			IFDEBUG printf("forloop: i %d, j %d\n", i, j); ENDBUG
 			comparestatus = joincompare(buffer1,buffer2,i,j,numjoinattrs,attrlist1,attrlist2);
@@ -305,7 +307,8 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 				case 1:
 					IFDEBUG printf("case 1:\n"); ENDBUG
 					assert(same_count == 0);
-					recread2++;j++;
+					//recread2++;
+					j++;
 					break;
 
 				case -1:
@@ -319,14 +322,14 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 						if (comparestatus == 0) {
 							// next element of 1st buffer also matches
 							j = j - same_count;
-							recread2 = recread2 - same_count;
+							//recread2 = recread2 - same_count;
 							same_count = 0;
 						} else {
 							// not same.
 							same_count = 0;
 						}
 					}
-					recread1++;
+					//recread1++;
 					i++;
 					break;
 
@@ -339,11 +342,13 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 						int size;
 						if(projlist[k][0] == 1){
 							size = attributes1[projlist[k][1]][1];
-							readoffset1=recsize1*recread1;
+							//readoffset1=recsize1*recread1;
+							readoffset1=recsize1*i;
 							memcpy(outbuffer+writeoffset, buffer1 + readoffset1 + attributes1[projlist[k][1]][2], size);
 						}
 						else{
 							size = attributes2[projlist[k][1]][1];
+							//readoffset2=recsize2*recread2;
 							readoffset2=recsize2*recread2;
 							memcpy(outbuffer+writeoffset, buffer2 + readoffset2 + attributes2[projlist[k][1]][2], size);
 						}
@@ -362,13 +367,16 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 						writeoffset += size;
 
 					}
-					recread2++;
+					//recread2++;
 					recwrite++;
 					j++;
 					same_count++;
 					break;
 				}
-				IFDEBUG printf("[*]recread1 %d recread2 %d, recwrite %d, same_count %d \n",recread1, recread2, recwrite, same_count ); ENDBUG
+
+
+				//IFDEBUG printf("[*]recread1 %d recread2 %d, recwrite %d, same_count %d \n",recread1, recread2, recwrite, same_count ); ENDBUG
+				IFDEBUG printf("[*]records read 1 %d records read 2 %d, recwrite %d, same_count %d \n",i, j, recwrite, same_count ); ENDBUG
 				if(recwrite >= maxrecout){
 					IFDEBUG printf("Writing out from writebuffer, recwrite: %d, i: %d, j %d\n", recwrite, i, j); ENDBUG
 					valid_buffer = false;
@@ -377,17 +385,19 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recwrite = 0;
 					writeoffset = 0;
 				}
-				if(recread1 >= maxrec1){
-					IFDEBUG printf("Reading in buffer1: recread1 %d\n",recread1 ); ENDBUG
-					recread1 = 0;
+				//if(recread1 >= maxrec1){
+				if(i >= maxrec1){
+					IFDEBUG printf("Reading in buffer1: records read 1 %d\n",i ); ENDBUG
+					//recread1 = 0;
 					i = 0;
 					readstatus1 = fread(buffer1,recsize1,maxrec1,tempfile1);
 					// readstatus1 = fread(buffer1,recsize1,maxrec1,tempfile1);
 					IFDEBUG printf("status1: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
 					
 				}
-				if(recread2 >= maxrec2){
-					IFDEBUG printf("recread2 %d > maxrec2 %d\n", recread2, maxrec2); ENDBUG
+				//if(recread2 >= maxrec2){
+				if(j >= maxrec2){
+					IFDEBUG printf("records read 2: %d > maxrec2: %d\n", j, maxrec2); ENDBUG
 					if (same_count!=0)
 					{
 						// Houston, there is a problem
@@ -397,17 +407,21 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 						fseek(tempfile2, -same_count*recsize2, SEEK_CUR);
 						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
 						IFDEBUG printf("Buffer overflown with same_count=%d; status2: %d,%d, %d\n", same_count,readstatus1, readstatus2, writestatus);ENDBUG
-						recread2 = same_count;
+						//recread2 = same_count;
 						j = same_count;
 					} else {
 						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
 						IFDEBUG printf("status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
-						recread2 = 0;
+						//recread2 = 0;
 						j = 0;	
 					}
 					
 				}
 				IFDEBUG printf("At the end of for loop, i %d j %d readstatus1 %d readstatus2 %d\n", i, j, readstatus1, readstatus2); ENDBUG
+			}
+			if(j >= readstatus2 && (i+1) >= readstatus1 && i<maxrec1 && j<= maxrec2){
+					//printf("%s\n", );
+					break;
 			}
 
 	}
@@ -415,11 +429,11 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 
 
 	
-	IFDEBUG
-		printf("recread1, recread2, recwrite: %d, %d, %d\n",recread1, recread2, recwrite);
-		printf("read/write status: %d,%d, %d\n", readstatus1, readstatus2, writestatus);
-		printf("Loop count: %d\n", loop_count);
-	ENDBUG
+	// IFDEBUG
+	// 	printf("records read 1, records read 2, recwrite: %d, %d, %d\n",i, j, recwrite);
+	// 	printf("read/write status: %d,%d, %d\n", readstatus1, readstatus2, writestatus);
+	// 	printf("Loop count: %d\n", loop_count);
+	// ENDBUG
 
 	if(valid_buffer){
 		IFDEBUG printf("************************fart**********%d\n", recwrite); ENDBUG
