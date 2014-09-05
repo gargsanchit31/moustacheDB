@@ -312,25 +312,8 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					break;
 
 				case -1:
-				IFDEBUG printf("case -1:\n"); ENDBUG
-					if (same_count!=0)
-					{
-						IFDEBUG 
-						printf("Same Count is: %d\n", same_count);
-						ENDBUG
-						comparestatus = joincompare(buffer1, buffer2, i+1, j-1,numjoinattrs,attrlist1,attrlist2);
-						if (comparestatus == 0) {
-							// next element of 1st buffer also matches
-							j = j - same_count;
-							//recread2 = recread2 - same_count;
-							same_count = 0;
-						} else {
-							// not same.
-							same_count = 0;
-						}
-					}
-					//recread1++;
-					i++;
+					IFDEBUG printf("case -1:\n"); ENDBUG
+					i++; j-=same_count;same_count=0;
 					break;
 
 				case 0:

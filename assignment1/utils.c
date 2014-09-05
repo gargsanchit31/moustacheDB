@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "string.h"
 
-const int BUFF_SIZE = 400;
+const int BUFF_SIZE = 8192;
 
 int display(char *filename){
 	int num1;

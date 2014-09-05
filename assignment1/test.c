@@ -12,7 +12,7 @@
 #define MAX 30
 #define MAX_QUERY_LEN 1000
 
-int BUFF_SIZE = 400;
+int BUFF_SIZE = 8192;
 
 const char* enumname(Aggfn e){
 	switch(e){
