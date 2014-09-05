@@ -109,6 +109,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 
 	bool status = true;
 	tempfile1 = open_file(rel1, "rb");
+	// FILE* fp = open_file(rel1, "rb");
 	status = (tempfile1 == NULL);
 	tempfile2 = open_file(rel2, "rb");
 	status = status && (tempfile2 == NULL);
@@ -291,8 +292,8 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 
 	do{
 		loop_count++;
-		IFDEBUG printf("loop_count is: %d\n", loop_count); ENDBUG
-		if(readstatus1==0 && readstatus2==0)
+		IFDEBUG printf("loop_count is: %d\nreadstatus1: %d, readstatus2: %d\n", loop_count, readstatus1, readstatus2); ENDBUG
+		if(readstatus1==0 || readstatus2==0)
 			break;
 
 		int i,j;
@@ -347,16 +348,16 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 							memcpy(outbuffer+writeoffset, buffer2 + readoffset2 + attributes2[projlist[k][1]][2], size);
 						}
 
-						IFDEBUG
-							if(projlist[k][0] == 1){
-								printf("K: %d,Relation Number: %d,Attribute NUmber: %d, ",k,projlist[k][0],projlist[k][1]);
-								printf("readoffset1: %d, writeoffset:%d, attr size: %d\n",readoffset1,writeoffset,size);
-							}
-							else{
-								printf("K: %d,Relation Number: %d,Attribute NUmber: %d ",k,projlist[k][0],projlist[k][1]);
-								printf("readoffset2: %d, writeoffset:%d, attr size: %d\n",readoffset2,writeoffset,size);
-							}
-						ENDBUG
+						// IFDEBUG
+						// 	if(projlist[k][0] == 1){
+						// 		printf("K: %d,Relation Number: %d,Attribute NUmber: %d, ",k,projlist[k][0],projlist[k][1]);
+						// 		printf("readoffset1: %d, writeoffset:%d, attr size: %d\n",readoffset1,writeoffset,size);
+						// 	}
+						// 	else{
+						// 		printf("K: %d,Relation Number: %d,Attribute NUmber: %d ",k,projlist[k][0],projlist[k][1]);
+						// 		printf("readoffset2: %d, writeoffset:%d, attr size: %d\n",readoffset2,writeoffset,size);
+						// 	}
+						// ENDBUG
 
 						writeoffset += size;
 
@@ -365,19 +366,25 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 					recwrite++;
 					j++;
 					same_count++;
-
-				IFDEBUG printf("recread %d, recwrite %d, same_count %d \n",recread2, recwrite, same_count ); ENDBUG
+					break;
+				}
+				IFDEBUG printf("[*]recread1 %d recread2 %d, recwrite %d, same_count %d \n",recread1, recread2, recwrite, same_count ); ENDBUG
 				if(recwrite >= maxrecout){
 					IFDEBUG printf("Writing out from writebuffer, recwrite: %d, i: %d, j %d\n", recwrite, i, j); ENDBUG
 					valid_buffer = false;
 					writestatus = fwrite(outbuffer, recsizeout, recwrite, out);
 					IFDEBUG printf("status3: %d, %d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
 					recwrite = 0;
+					writeoffset = 0;
 				}
 				if(recread1 >= maxrec1){
-					readstatus1 = fread(buffer1,recsize1,maxrec1,tempfile1);
-					IFDEBUG printf("status1: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+					IFDEBUG printf("Reading in buffer1: recread1 %d\n",recread1 ); ENDBUG
 					recread1 = 0;
+					i = 0;
+					readstatus1 = fread(buffer1,recsize1,maxrec1,tempfile1);
+					// readstatus1 = fread(buffer1,recsize1,maxrec1,tempfile1);
+					IFDEBUG printf("status1: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+					
 				}
 				if(recread2 >= maxrec2){
 					IFDEBUG printf("recread2 %d > maxrec2 %d\n", recread2, maxrec2); ENDBUG
@@ -389,34 +396,22 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 						// and then read the buffer
 						fseek(tempfile2, -same_count*recsize2, SEEK_CUR);
 						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
-						IFDEBUG printf("Buffer overflown with same_count!=0; status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
+						IFDEBUG printf("Buffer overflown with same_count=%d; status2: %d,%d, %d\n", same_count,readstatus1, readstatus2, writestatus);ENDBUG
 						recread2 = same_count;
 						j = same_count;
 					} else {
 						readstatus2 = fread(buffer2,recsize2,maxrec2,tempfile2);
 						IFDEBUG printf("status2: %d,%d, %d\n", readstatus1, readstatus2, writestatus);ENDBUG
-						recread2 = 0;	
+						recread2 = 0;
+						j = 0;	
 					}
 					
 				}
+				IFDEBUG printf("At the end of for loop, i %d j %d readstatus1 %d readstatus2 %d\n", i, j, readstatus1, readstatus2); ENDBUG
 			}
-			if ((j == readstatus2) && (same_count!=0) && (i < readstatus1))
-			{
-				IFDEBUG 
-				printf("Same Count is: %d\n", same_count);
-				ENDBUG
-				
-				j = j - same_count;
-				recread2 = recread2 - same_count;
-				i++;
-				recread1++;
-				same_count = 0;
-			}
-			IFDEBUG printf("At the end of for loop, i %d j %d readstatus1 %d readstatus2 %d\n", i, j, readstatus1, readstatus2); ENDBUG
-		}
 
 	}
-	while(!feof(tempfile1) && !feof(tempfile2));
+	while((readstatus1!=0) && (readstatus2!=0));
 
 
 	
@@ -427,6 +422,7 @@ int equijoin(char* rel1, char* rel2, char* outrel, int numjoinattrs, int attrlis
 	ENDBUG
 
 	if(valid_buffer){
+		IFDEBUG printf("************************fart**********%d\n", recwrite); ENDBUG
 		writestatus = fwrite(outbuffer, recsizeout, recwrite, out);
 		IFDEBUG printf("Write the last buffer: %d\n", writestatus); ENDBUG
 	}
